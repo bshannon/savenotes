@@ -3,7 +3,7 @@ Objective-C object archive format
 XXX - still very preliminary
 
 All integers use variable length encoding with 7 bits per byte
-and the eighth bit indicating whether its continued in the next byte.
+and the eighth bit indicating whether it's continued in the next byte.
 Little endian byte order.  Integer values and array lengths are encoded
 this way.
 
