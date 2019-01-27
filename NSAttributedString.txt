@@ -1,0 +1,114 @@
+Objective-C object archive format
+
+XXX - still very preliminary
+
+All integers use variable length encoding with 7 bits per byte
+and the eighth bit indicating whether its continued in the next byte.
+Little endian byte order.  Integer values and array lengths are encoded
+this way.
+
+Floating point numbers are encoded as 4 bytes in IEEE floating point
+format, little endian byte order.
+
+Data types are encoded with a one byte value indicating the type
+followed by the data for the type.  Integer values and lengths are
+encoded as described above.
+
+The low 3 bits determine the basic data type:
+
+0 - integer
+2 - byte array or nested struct
+5 - float
+
+The upper 8 bits are an index that indicates which field of the containing
+struct this is data for.  They start at 1 and increase for each data item,
+unless the data is for an array, in which case the index repeats for each
+element in the array.
+
+The Apple Note data is stored as an NSAttributedString
+(or maybe NSMutableAttributedString) in object archive format.
+This is not a "keyed" archive, so isn't self-describing.
+The real types and names of the fields depends on the code,
+which is unknown.
+
+This is what I've been able to determine by experimentation:
+
+The syntax is <index>: <type>, <value or use>.
+The index is followed by "?" if that item is sometimes not present.
+There are some gaps in the index values if I've never seen an item
+with that index value.
+
+1: int, == 0, ?
+2: struct, containing...
+  1: int, == 0, ?
+  2: int, == 0, ?
+  3: struct, containing...
+    1?: <never present>
+    2: string, the plain text
+
+    3: array of structs (edit records?) each containing...
+      1: struct, containing
+        1: int - 0 == first or last, 1 == other ?
+        2: int pos
+      <if pos < 0, following not included>
+      2: int len
+      3: struct, containing...
+        1: int - 0 = first, 1 == other, 8 == last?
+        2: int, normally 00, otherwise >0x20
+      4?: int, really boolean?  always 0 or 1
+      5: array of int, usually length 1, [0] = next pointer
+
+    4: struct, containing...
+      1: struct, containing...
+        1: struct, containing...
+          1: byte array, length 16, unknown
+        2: struct[0], containing...
+          1: int, increases for (almost) every edit
+        2: struct[1], containing...
+          1: int, increases for every edit
+
+    5: array of structs, attributes, each containing...
+      1: int, chars using this attribute
+      2?: struct, containing...
+        1?: int, paragraph style
+        2?: int, ?
+        3?: int, ?
+        5?: struct, present for checklist elements, containing...
+          1: byte array, unknown
+          2: int, 0 = not checked, 1 = checked
+        7?: int, ?
+      3?: struct, font, containing...
+        1?: string, font name
+        2: float, font size
+        3?: int, ?
+      5?: int, style bits, 0x01 == bold, 0x02 == italic
+      6?: int, boolean, 1 = underline
+      7?: int, boolean, 1 = strikethrough
+      8?: int, baseline, for superscript/subscript
+      9?: string, url
+      10?: struct, color, containing...
+        1: float, red
+        2: float, green
+        3: float, blue
+        4: float, alpha
+      11?: int, ?
+      12?: struct, containing:
+        1: string, uuid
+        2: string, type
+
+
+There is no obvious association between edit records and the attribute
+array.  In simple cases they're in order and match one to one, but
+after some edits the edit records no loner align with the text data.
+
+The attributes cover all the text data, in order.
+
+Tables are represented as an attribute with a uuid with type
+"com.apple.notes.table" that references another entry in the Notes
+database.  I haven't analyzed the format of that data.
+
+A uuid with type "public.jpeg" is used to reference images stored
+in ~/Library/Group Containers/group.com.apple.notes/Media/<uuid>.
+
+A uuid with type "com.adobe.pdf" is used to reference pdf files stored
+in ~/Library/Group Containers/group.com.apple.notes/Media/<uuid>.
