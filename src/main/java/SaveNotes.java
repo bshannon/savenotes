@@ -95,6 +95,7 @@ public class SaveNotes {
     private static boolean all;
     private static boolean html;
     private static boolean raw;
+    private static boolean marked;
     private static boolean print;
     private static boolean debug;
     private static Pattern titlePat;
@@ -119,6 +120,8 @@ public class SaveNotes {
                 html = true;
             } else if (argv[optind].equals("-r")) {
                 raw = true;
+            } else if (argv[optind].equals("-m")) {
+                marked = true;
             } else if (argv[optind].equals("-p")) {
                 print = true;
             } else if (argv[optind].equals("-X")) {
@@ -129,7 +132,7 @@ public class SaveNotes {
             } else if (argv[optind].startsWith("-")) {
                 System.out.println(
                     "Usage: savenotes [-f db] [-a] [-v] [-d dir] [-t pattern]" +
-                    " [-h] [-r] [-p] [-X]");
+                    " [-h] [-r] [-m] [-p] [-X]");
                 System.exit(1);
             } else {
                 break;
@@ -261,6 +264,9 @@ public class SaveNotes {
         String text = nd.getString();
         debug("Text len: %d%n", text.length());
         debug("Text:%n%s%n", text);
+        
+        if (!marked && !html)
+            return text;
 
         /*
          * Loop through the "edit record" elements.
