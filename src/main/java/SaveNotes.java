@@ -97,6 +97,7 @@ public class SaveNotes {
     private static boolean raw;
     private static boolean marked;
     private static boolean print;
+    private static boolean markdown;
     private static boolean debug;
     private static Pattern titlePat;
     private static File root;
@@ -120,10 +121,12 @@ public class SaveNotes {
                 html = true;
             } else if (argv[optind].equals("-r")) {
                 raw = true;
-            } else if (argv[optind].equals("-m")) {
+            } else if (argv[optind].equals("-k")) {
                 marked = true;
             } else if (argv[optind].equals("-p")) {
                 print = true;
+            } else if (argv[optind].equals("-m")) {
+                markdown = true;
             } else if (argv[optind].equals("-X")) {
                 debug = true;
             } else if (argv[optind].equals("--")) {
@@ -132,7 +135,7 @@ public class SaveNotes {
             } else if (argv[optind].startsWith("-")) {
                 System.out.println(
                     "Usage: savenotes [-f db] [-a] [-v] [-d dir] [-t pattern]" +
-                    " [-h] [-r] [-m] [-p] [-X]");
+                    " [-h] [-r] [-m] [-p] [-k] [-X]");
                 System.exit(1);
             } else {
                 break;
@@ -168,7 +171,7 @@ public class SaveNotes {
      * Loop through the matching notes and save (or print) each one.
      */
     private static void save() throws SQLException, IOException {
-        String ext = raw ? ".raw" : (html ? ".html" : ".txt");
+        String ext = raw ? ".raw" : (html ? ".html" : (markdown ? ".md" : ".txt"));
 
         Connection conn = connect(db);
         Statement stmt = conn.createStatement();
@@ -265,7 +268,7 @@ public class SaveNotes {
         debug("Text len: %d%n", text.length());
         debug("Text:%n%s%n", text);
         
-        if (!marked && !html)
+        if (!marked && !html && !markdown)
             return text;
 
         /*
@@ -570,6 +573,8 @@ public class SaveNotes {
 
         if (html)
             return getHtmlText(text, attributes);
+        else if (markdown)
+            return getMarkdownText(text, attributes);
         else
             return getMarkedText(text, attributes);
     }
@@ -695,14 +700,131 @@ public class SaveNotes {
     }
 
     /**
+     * Given the plain text and list of Attributes, return a string
+     * with markdown markup.
+     *
+     * XXX - need to detect start and end of (nested) bullet/numbered list.
+     * XXX - may be easier to detect these cases *before* creating the styles.
+     * XXX - many more cases to handle below.
+     */
+    private static String getMarkdownText(String text,
+                                            List<Attribute> attributes) {
+        StringBuilder mtext = new StringBuilder();
+        int tpos = 0;
+        for (Attribute a : attributes) {
+            List<String> close = new ArrayList<String>();       // a stack
+            String atext = text.substring(tpos, tpos + a.length());
+            boolean nonl = false;       // newline not allowed?
+
+            /*
+             * For each style, add the opening html and save the closing html.
+             */
+            for (Style s : a.styles()) {
+                if (s instanceof UuidStyle) {
+                    UuidStyle us = (UuidStyle)s;
+                    mtext.append(String.format("<INSERT UUID %s, TYPE %s>",
+                                                us.uuid, us.type));
+                } else if (s instanceof UrlStyle) {
+                    UrlStyle us = (UrlStyle)s;
+                    mtext.append("[");
+                    close.add("](" + us.url + ")");
+                } else if (s instanceof FontStyle) {
+                    FontStyle fs = (FontStyle)s;
+                    // XXX - font name ignored for now
+                    // XXX - is this the right way to handle non-integer sizes?
+                    mtext.append(String.format("<font size=\"%f\">", fs.size));
+                    close.add("</font>");
+                } else if (s instanceof TextStyle) {
+                    nonl = true;
+                    TextStyle ts = (TextStyle)s;
+                    if ((ts.style & TextStyle.BOLD) != 0) {
+                        mtext.append("**");
+                        close.add("**");
+                    }
+                    if ((ts.style & TextStyle.ITALIC) != 0) {
+                        mtext.append("_");
+                        close.add("_");
+                    }
+                } else if (s instanceof ColorStyle) {
+                    ColorStyle cs = (ColorStyle)s;
+                    // XXX - now what?
+                } else if (s instanceof ParagraphStyle) {
+                    ParagraphStyle ps = (ParagraphStyle)s;
+                    switch (ps.style) {
+                    case ParagraphStyle.TITLE:
+                        nonl = true;
+                        mtext.append("\n# ");
+                        close.add("\n");
+                        break;
+                    case ParagraphStyle.HEADING:
+                        nonl = true;
+                        mtext.append("\n## ");
+                        close.add("\n");
+                        break;
+                    case ParagraphStyle.MONO:
+                        mtext.append("`");
+                        close.add("`");
+                        break;
+                    default:
+                        // XXX - not handled yet
+                        mtext.append(String.format("<div style=\"%d\">",
+                                                    ps.style));
+                        close.add("</div>");
+                    }
+                } else {
+                    mtext.append("<UNKNOWN>");
+                    close.add("</UNKNOWN>");
+                }
+            }
+
+            /*
+             * Add the text.
+             * If the text ends with a newline, move it out.
+             */
+            boolean needNewline = false;
+            if (atext.endsWith("\n")) {
+                atext = atext.substring(0, atext.length() - 1);
+                needNewline = true;
+            }
+
+            if (nonl) {
+                // need to remove newlines
+                atext = atext.trim().replace('\n', ' ');
+            }
+            mtext.append(markdownText(atext));
+
+            /*
+             * Add the closing elements, in reverse order.
+             */
+            for (int i = close.size() - 1; i >= 0; i--)
+                mtext.append(close.get(i));
+            if (needNewline)
+                mtext.append("\n\n");
+            tpos += a.length();
+        }
+        return mtext.toString();
+    }
+
+    /**
      * Convert the plain text to html.
      * For now, just replace all "," with the html equivalent to
-     * prevent it fromlooking like an html tag, and replace all
+     * prevent it from looking like an html tag, and replace all
      * the newlines with <br/>.
      * XXX - probably more quoting/escaping needs to be done here.
      */
     private static String htmlText(String text) {
         return text.replace("<", "&lt;").replace("\n", "<br/>\n");
+    }
+
+    /**
+     * Convert the plain text to markdown.
+     * Turn newlines into hard line breaks.
+     * (Backslash at end of line only works if following
+     * line is not empty.)
+     * XXX - probably more quoting/escaping needs to be done here.
+     */
+    private static String markdownText(String text) {
+        return text.replaceAll("\n([^\n])", "\\\\\n$1");
     }
 
     public static String bytesToHex(byte[] bytes) {

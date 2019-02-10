@@ -10,7 +10,7 @@ By default, it saves all your notes to the current directory, in
 subdirectories based on your Notes folders.  Use the `-d dir`
 option to tell it where to save.
 
-Usage: savenotes [-f db] [-a] [-v] [-d dir] [-t pattern] [-h] [-r] [-m] [-p] [-X]
+Usage: savenotes [-f db] [-a] [-v] [-d dir] [-t pattern] [-h] [-r] [-m] [-p] [-k] [-X]
 
 Options are:
 
@@ -21,8 +21,9 @@ Options are:
 * `-t` *pattern* - only save notes whose title matches the pattern regexp
 * `-h` - save in html format
 * `-r` - save in raw (archived object) format
-* `-m` - save in marked text format (mostly useful for debugging with -X)
+* `-m` - save in markdown format
 * `-p` - print to stdout instead of saving to a file
+* `-k` - save in marked text format (mostly useful for debugging with -X)
 * `-X` - display lots of detailed debugging output
 
 ## Data format
