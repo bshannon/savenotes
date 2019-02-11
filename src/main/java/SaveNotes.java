@@ -465,7 +465,7 @@ public class SaveNotes {
                             if (fsize != DEFAULT_FONT_SIZE)
                                 err("Already saw font-size %f", fsize);
                             fsize = fnd.getFloat();
-                            debug("font-size %f ", fsize);
+                            debug("font-size %s ", fontSize(fsize));
                             break;
                         case 3:
                             int fb = fnd.getInt();
@@ -634,7 +634,8 @@ public class SaveNotes {
                     FontStyle fs = (FontStyle)s;
                     // XXX - font name ignored for now
                     // XXX - is this the right way to handle non-integer sizes?
-                    mtext.append(String.format("<font size=\"%f\">", fs.size));
+                    mtext.append("<font size=\"").append(fontSize(fs.size)).
+                            append("\">");
                     close.add("</font>");
                 } else if (s instanceof TextStyle) {
                     TextStyle ts = (TextStyle)s;
@@ -732,7 +733,8 @@ public class SaveNotes {
                     FontStyle fs = (FontStyle)s;
                     // XXX - font name ignored for now
                     // XXX - is this the right way to handle non-integer sizes?
-                    mtext.append(String.format("<font size=\"%f\">", fs.size));
+                    mtext.append("<font size=\"").append(fontSize(fs.size)).
+                            append("\">");
                     close.add("</font>");
                 } else if (s instanceof TextStyle) {
                     nonl = true;
@@ -825,6 +827,17 @@ public class SaveNotes {
      */
     private static String markdownText(String text) {
         return text.replaceAll("\n([^\n])", "\\\\\n$1");
+    }
+
+    /**
+     * Convert font size to a string.
+     */
+    private static String fontSize(float fs) {
+        int intSize = (int)fs;
+        if ((float)intSize == fs)
+            return Integer.toString(intSize);
+        else
+            return Float.toString(fs);
     }
 
     public static String bytesToHex(byte[] bytes) {
