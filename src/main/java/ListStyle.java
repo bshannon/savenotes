@@ -30,34 +30,24 @@
  */
 
 /**
- * A paragraph style.
+ * A list paragraph style.
  */
-public class ParagraphStyle extends Style {
-    public int style;
+public class ListStyle extends ParagraphStyle {
+    public int indent;
 
-    public static final int NONE = -1;
-    public static final int TITLE = 0;
-    public static final int HEADING = 1;
-    public static final int MONO = 4;
-    public static final int LIST_START = 100;
-    public static final int BULLET = 100;
-    public static final int DASHED = 101;
-    public static final int NUMBERED = 102;
-    public static final int CHECKLIST = 103;
-
-    public ParagraphStyle(int style) {
-        super();
-        this.style = style;
+    public ListStyle(int style, int indent) {
+        super(style);
+        this.indent = indent;
     }
 
     public boolean equals(Object o) {
-        if (!(o instanceof ParagraphStyle))
+        if (!(o instanceof ListStyle))
             return false;
-        ParagraphStyle to = (ParagraphStyle)o;
-        return style == to.style;
+        ListStyle to = (ListStyle)o;
+        return this.indent == to.indent && super.equals(o);
     }
 
     public String toString() {
-        return String.format("ParagraphStyle[style=%d]", style);
+        return String.format("ListStyle[style=%d,indent=%d]", style, indent);
     }
 }

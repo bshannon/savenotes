@@ -30,34 +30,21 @@
  */
 
 /**
- * A paragraph style.
+ * A checklist paragraph style.
  */
-public class ParagraphStyle extends Style {
-    public int style;
+public class ChecklistStyle extends ListStyle {
+    public boolean checked;
 
-    public static final int NONE = -1;
-    public static final int TITLE = 0;
-    public static final int HEADING = 1;
-    public static final int MONO = 4;
-    public static final int LIST_START = 100;
-    public static final int BULLET = 100;
-    public static final int DASHED = 101;
-    public static final int NUMBERED = 102;
-    public static final int CHECKLIST = 103;
-
-    public ParagraphStyle(int style) {
-        super();
-        this.style = style;
+    public ChecklistStyle(boolean checked, int indent) {
+        super(CHECKLIST, indent);
+        this.checked = checked;
     }
 
     public boolean equals(Object o) {
-        if (!(o instanceof ParagraphStyle))
+        if (!(o instanceof ChecklistStyle))
             return false;
-        ParagraphStyle to = (ParagraphStyle)o;
-        return style == to.style;
-    }
-
-    public String toString() {
-        return String.format("ParagraphStyle[style=%d]", style);
+        ChecklistStyle to = (ChecklistStyle)o;
+        // note that "checked" doesn't count in equality
+        return super.equals(o);
     }
 }
