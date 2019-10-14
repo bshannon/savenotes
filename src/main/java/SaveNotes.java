@@ -488,18 +488,19 @@ public class SaveNotes {
                     }
                     break;
                 case 5:
-                    if (style != 0)
-                        err("Already saw style %d", style);
-                    style = ad.getInt();
-                    debug("style %x ", style);
+                    int sint = ad.getInt();
+                    debug("style %x ", sint);
+                    style |= sint;
                     break;
                 case 6:
                     int t2 = ad.getInt();
                     debug("underline %d ", t2);
+                    style |= TextStyle.UNDERLINE;
                     break;
                 case 7:
                     int t6 = ad.getInt();
                     debug("strikethrough %d ", t6);
+                    style |= TextStyle.STRIKETHROUGH;
                     break;
                 case 8:
                     int baseline = ad.getInt();
@@ -630,7 +631,6 @@ public class SaveNotes {
              * Process each "line" of the text.
              */
             int starti = 0;
-            String prevline = "";
             while (starti >= 0) {
                 String line;
                 int nl = atext.indexOf('\n', starti);
@@ -749,6 +749,14 @@ public class SaveNotes {
                             mtext.append("<i>");
                             close.add("</i>");
                         }
+                        if ((ts.style & TextStyle.UNDERLINE) != 0) {
+                            mtext.append("<u>");
+                            close.add("</u>");
+                        }
+                        if ((ts.style & TextStyle.STRIKETHROUGH) != 0) {
+                            mtext.append("<del>");
+                            close.add("</del>");
+                        }
                     } else if (s instanceof ColorStyle) {
                         ColorStyle cs = (ColorStyle)s;
                         // XXX - now what?
@@ -780,7 +788,6 @@ public class SaveNotes {
                         break;
                     }
                 }
-                prevline = line;
             }
             tpos += a.length();
         }
@@ -834,7 +841,6 @@ public class SaveNotes {
              * Process each "line" of the text.
              */
             int starti = 0;
-            String prevline = "";
             while (starti >= 0) {
                 String line;
                 int nl = atext.indexOf('\n', starti);
@@ -915,9 +921,14 @@ public class SaveNotes {
                             case ParagraphStyle.NONE:
                                 // if previous line was also a plain line,
                                 // need to add a hard line break
+                                // XXX - Not all markdown displayers agree on
+                                // how to force a line break.  This works for
+                                // GitHub Flavored Markdown, but not MacDown.
+                                // Should expose some properties or options to
+                                // control this behavior.
                                 if (curps.style == ParagraphStyle.NONE &&
                                         line.length() > 0 &&
-                                        prevline.length() > 0) {
+                                        !endsWithBlankLine(mtext)) {
                                     mtext.setLength(mtext.length() - 1);
                                     mtext.append("\\\n");
                                 }
@@ -989,6 +1000,18 @@ public class SaveNotes {
                             mtext.append("_");
                             close.add("_");
                         }
+                        // XXX - works for GitHub
+                        // https://stackoverflow.com/a/47354053/1040885
+                        if ((ts.style & TextStyle.UNDERLINE) != 0) {
+                            mtext.append("<ins>");
+                            close.add("</ins>");
+                        }
+                        // GitHub-flavored markdown
+                        // https://guides.github.com/features/mastering-markdown/#GitHub-flavored-markdown
+                        if ((ts.style & TextStyle.STRIKETHROUGH) != 0) {
+                            mtext.append("~~");
+                            close.add("~~");
+                        }
                     } else if (s instanceof ColorStyle) {
                         ColorStyle cs = (ColorStyle)s;
                         // XXX - now what?
@@ -1008,7 +1031,6 @@ public class SaveNotes {
                     mtext.append(close.get(i));
                 if (needNewline)
                     mtext.append("\n");
-                prevline = line;
             }
             tpos += a.length();
         }
@@ -1122,6 +1144,11 @@ public class SaveNotes {
 
     private static boolean endsWithNewline(StringBuilder sb) {
         return sb.length() > 0 && sb.charAt(sb.length() - 1) == '\n';
+    }
+
+    private static boolean endsWithBlankLine(StringBuilder sb) {
+        return sb.length() > 1 && sb.charAt(sb.length() - 1) == '\n'
+            && sb.charAt(sb.length() - 2) == '\n';
     }
 
     private static void ensureBlankLine(StringBuilder sb) {

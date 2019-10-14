@@ -37,6 +37,8 @@ public class TextStyle extends Style {
 
     public static final int BOLD = 0x01;
     public static final int ITALIC = 0x02;
+    public static final int UNDERLINE = 0x04;
+    public static final int STRIKETHROUGH = 0x08;
 
     public TextStyle(int style) {
         super();
